@@ -1,0 +1,128 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Switch Minigames</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin: 20px;
+    }
+    #nav {
+      margin-bottom: 10px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    .game {
+      display: none;
+    }
+    canvas {
+      background: #222;
+    }
+  </style>
+</head>
+<body>
+  <div id="nav">
+    <button onclick="showGame('snake')">Snake</button>
+    <button onclick="showGame('ttt')">Tic Tac Toe</button>
+    <button onclick="showGame('lights')">Lights Out</button>
+    <button onclick="showGame('tetris')">Tetris</button>
+  </div>
+
+  <!-- Snake -->
+  <div id="snakeGame" class="game">
+    <canvas id="snakeCanvas" width="300" height="300"></canvas>
+    <div><button onclick="resetSnake()">Reset</button></div>
+    <div id="snakeStatus"></div>
+  </div>
+
+  <!-- Tic Tac Toe -->
+  <div id="tttGame" class="game">
+    <table border="1" cellspacing="0" cellpadding="20">
+      <tr><td onclick="playTTT(0)"></td><td onclick="playTTT(1)"></td><td onclick="playTTT(2)"></td></tr>
+      <tr><td onclick="playTTT(3)"></td><td onclick="playTTT(4)"></td><td onclick="playTTT(5)"></td></tr>
+      <tr><td onclick="playTTT(6)"></td><td onclick="playTTT(7)"></td><td onclick="playTTT(8)"></td></tr>
+    </table>
+    <div><button onclick="resetTTT()">Reset</button></div>
+    <div id="tttStatus"></div>
+  </div>
+
+  <!-- Lights Out -->
+  <div id="lightsGame" class="game">
+    <table id="lightsTable"></table>
+    <div><button onclick="resetLights()">Reset</button></div>
+  </div>
+
+  <!-- Tetris -->
+  <div id="tetrisGame" class="game">
+    <canvas id="tetrisCanvas" width="200" height="400"></canvas>
+    <div><button onclick="resetTetris()">Reset</button></div>
+  </div>
+
+  <script>
+    function showGame(game) {
+      const games = ['snake', 'ttt', 'lights', 'tetris'];
+      games.forEach(g => {
+        const el = document.getElementById(g + 'Game');
+        if (el) el.style.display = 'none';
+      });
+      const showEl = document.getElementById(game + 'Game');
+      if (showEl) showEl.style.display = 'block';
+    }
+
+    // Dummy game logic placeholders
+    function resetSnake() {
+      document.getElementById('snakeStatus').textContent = 'Snake reset.';
+    }
+    function playTTT(pos) {
+      document.getElementById('tttStatus').textContent = 'You clicked position ' + pos;
+    }
+    function resetTTT() {
+      document.getElementById('tttStatus').textContent = '';
+    }
+    function resetLights() {
+      const table = document.getElementById('lightsTable');
+      table.innerHTML = '';
+      for (let r = 0; r < 5; r++) {
+        const row = table.insertRow();
+        for (let c = 0; c < 5; c++) {
+          const cell = row.insertCell();
+          cell.style.width = '40px';
+          cell.style.height = '40px';
+          cell.style.background = Math.random() > 0.5 ? '#fff' : '#444';
+          cell.onclick = () => {
+            cell.style.background = cell.style.background === 'rgb(255, 255, 255)' ? '#444' : '#fff';
+          };
+        }
+      }
+    }
+    function resetTetris() {
+      const ctx = document.getElementById('tetrisCanvas').getContext('2d');
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, 200, 400);
+      ctx.fillStyle = '#fff';
+      ctx.fillText('Tetris reset.', 50, 200);
+    }
+
+    // Init first game
+    showGame('snake');
+    resetLights();
+    resetTetris();
+  </script>
+</body>
+</html>
