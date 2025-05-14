@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mini Games</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background: #111;
+      color: white;
+      overflow: hidden;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+    }
+    #menu, #snakeGame, #tttGame, #lightsOutGame, #tetrisGame {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-grow: 1;
+    }
+    #menu {
+      display: flex;
+    }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 18px;
+      background: #222;
+      color: white;
+      border: 1px solid white;
+      cursor: pointer;
+    }
+    canvas {
+      background: #222;
+    }
+  </style>
+</head>
+<body>
+  <div id="menu">
+    <button onclick="showGame('snake')">🐍 Snake</button>
+    <button onclick="showGame('ttt')">⭕ Tic Tac Toe</button>
+    <button onclick="showGame('lights')">💡 Lights Out</button>
+    <button onclick="showGame('tetris')">🧱 Tetris</button>
+  </div>
+
+  <div id="tetrisGame">
+    <h2>Tetris</h2>
+    <canvas id="tetris" width="200" height="400"></canvas>
+    <p id="score">Score: 0</p>
+    <button onclick="startTetris()">🔄 Restart</button>
+    <button onclick="backToMenu()">⬅️ Back</button>
+  </div>
+
+  <script>
+    function showGame(game) {
+      document.querySelectorAll('div[id$="Game"]').forEach(div => div.style.display = "none");
+      document.getElementById("menu").style.display = "none";
+      if (game === "snake" || game === "ttt" || game === "lights" || game === "tetris") {
+        document.getElementById(game + "Game").style.display = "flex";
+        if (game === "tetris") startTetris();
+      }
+    }
+    function backToMenu() {
+      document.querySelectorAll('div[id$="Game"]').forEach(div => div.style.display = "none");
+      document.getElementById("menu").style.display = "flex";
+    }
+
+    // Basic Tetris implementation
+    const canvas = document.getElementById('tetris');
+    const context = canvas.getContext('2d');
+    context.scale(20, 20);
+    let matrix, player, arena, dropCounter, dropInterval, lastTime;
+
+    function createMatrix(w, h) {
+      const matrix = [];
+      while (h--) matrix.push(new Array(w).fill(0));
+      return matrix;
+    }
+
+    function createPiece(type) {
+      if (type === 'T') return [[0,1,0],[1,1,1],[0,0,0]];
+      if (type === 'O') return [[1,1],[1,1]];
+      if (type === 'L') return [[0,0,1],[1,1,1],[0,0,0]];
+      if (type === 'J') return [[1,0,0],[1,1,1],[0,0,0]];
+      if (type === 'I') return [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]];
+      if (type === 'S') return [[0,1,1],[1,1,0],[0,0,0]];
+      if (type === 'Z') return [[1,1,0],[0,1,1],[0,0,0]];
+    }
+
+    function collide(arena, player) {
+      const [m, o] = [player.matrix, player.pos];
+      for (let y = 0; y < m.length; ++y)
+        for (let x = 0; x < m[y].length; ++x)
+          if (m[y][x] && (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0)
+            return true;
+      return false;
+    }
+
+    function merge(arena, player) {
+      player.matrix.forEach((row, y) => {
+        row.forEach((val, x) => {
+          if (val) arena[y + player.pos.y][x + player.pos.x] = val;
+        });
+      });
+    }
+
+    function rotate(matrix, dir) {
+      for (let y = 0; y < matrix.length; ++y)
+        for (let x = 0; x < y; ++x)
+          [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
+      if (dir > 0) matrix.forEach(row => row.reverse());
+      else matrix.reverse();
+    }
+
+    function playerDrop() {
+      player.pos.y++;
+      if (collide(arena, player)) {
+        player.pos.y--;
+        merge(arena, player);
+        playerReset();
+        arenaSweep();
+        updateScore();
+      }
+      dropCounter = 0;
+    }
+
+    function playerMove(dir) {
+      player.pos.x += dir;
+      if (collide(arena, player)) player.pos.x -= dir;
+    }
+
+    function playerReset() {
+      const pieces = 'TJLOSZI';
+      player.matrix = createPiece(pieces[Math.floor(Math.random() * pieces.length)]);
+      player.pos.y = 0;
+      player.pos.x = Math.floor(arena[0].length / 2) - Math.floor(player.matrix[0].length / 2);
+      if (collide(arena, player)) {
+        arena.forEach(row => row.fill(0));
+        player.score = 0;
+        updateScore();
+      }
+    }
+
+    function playerRotate(dir) {
+      const pos = player.pos.x;
+      let offset = 1;
+      rotate(player.matrix, dir);
+      while (collide(arena, player)) {
+        player.pos.x += offset;
+        offset = -(offset + (offset > 0 ? 1 : -1));
+        if (offset > player.matrix[0].length) {
+          rotate(player.matrix, -dir);
+          player.pos.x = pos;
+          return;
+        }
+      }
+    }
+
+    function arenaSweep() {
+      outer: for (let y = arena.length - 1; y >= 0; --y) {
+        for (let x = 0; x < arena[y].length; ++x) {
+          if (!arena[y][x]) continue outer;
+        }
+        const row = arena.splice(y, 1)[0].fill(0);
+        arena.unshift(row);
+        ++y;
+        player.score += 10;
+      }
+    }
+
+    function updateScore() {
+      document.getElementById('score').innerText = "Score: " + player.score;
+    }
+
+    function drawMatrix(matrix, offset) {
+      matrix.forEach((row, y) => {
+        row.forEach((val, x) => {
+          if (val) {
+            context.fillStyle = 'lime';
+            context.fillRect(x + offset.x, y + offset.y, 1, 1);
+          }
+        });
+      });
+    }
+
+    function draw() {
+      context.fillStyle = '#000';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      drawMatrix(arena, {x:0, y:0});
+      drawMatrix(player.matrix, player.pos);
+    }
+
+    function update(time = 0) {
+      const delta = time - lastTime;
+      lastTime = time;
+      dropCounter += delta;
+      if (dropCounter > dropInterval) {
+        playerDrop();
+      }
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    function startTetris() {
+      arena = createMatrix(10, 20);
+      player = {pos: {x: 0, y: 0}, matrix: null, score: 0};
+      dropCounter = 0;
+      dropInterval = 1000;
+      lastTime = 0;
+      playerReset();
+      updateScore();
+      update();
+    }
+
+    document.addEventListener('keydown', event => {
+      if (document.getElementById("tetrisGame").style.display !== "flex") return;
+      if (event.key === "ArrowLeft") playerMove(-1);
+      else if (event.key === "ArrowRight") playerMove(1);
+      else if (event.key === "ArrowDown") playerDrop();
+      else if (event.key === "ArrowUp") playerRotate(1);
+    });
+  </script>
+</body>
+</html>
